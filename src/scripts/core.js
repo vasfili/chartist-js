@@ -919,7 +919,17 @@ var Chartist = {
 
       for (i = 0; i < responsiveOptions.length; i++) {
         var mql = window.matchMedia(responsiveOptions[i][0]);
-        mql.addListener(updateCurrentOptions);
+        if (!window.chrome) {
+            mql.addListener(updateCurrentOptions);
+        } else {
+            var mql2 = window.matchMedia('print');
+            mql2.addListener(function(m) {
+                if (!m.matches) {
+                    updateCurrentOptions();
+                }
+            });
+            mql.addListener(updateCurrentOptions);
+        }
         mediaQueryListeners.push(mql);
       }
     }
