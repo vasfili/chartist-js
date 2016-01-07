@@ -14,8 +14,8 @@
   }
 }(this, function () {
 
-/* Chartist.js 0.9.5
- * Copyright © 2015 Gion Kunz
+/* Chartist.js 0.9.5.1
+ * Copyright © 2016 Gion Kunz
  * Free to use under the WTFPL license.
  * http://www.wtfpl.net/
  */
@@ -25,7 +25,7 @@
  * @module Chartist.Core
  */
 var Chartist = {
-  version: '0.9.5'
+  version: '0.9.5.1'
 };
 
 (function (window, document, Chartist) {
@@ -940,7 +940,17 @@ var Chartist = {
 
       for (i = 0; i < responsiveOptions.length; i++) {
         var mql = window.matchMedia(responsiveOptions[i][0]);
-        mql.addListener(updateCurrentOptions);
+        if (!window.chrome) {
+            mql.addListener(updateCurrentOptions);
+        } else {
+            var mql2 = window.matchMedia('print');
+            mql2.addListener(function(m) {
+                if (!m.matches) {
+                    updateCurrentOptions();
+                }
+            });
+            mql.addListener(updateCurrentOptions);
+        }
         mediaQueryListeners.push(mql);
       }
     }
@@ -3483,8 +3493,8 @@ var Chartist = {
           return value;
         }).reduce(function(prev, curr) {
           return {
-            x: prev.x + curr.x || 0,
-            y: prev.y + curr.y || 0
+            x: prev.x + (curr && curr.x) || 0,
+            y: prev.y + (curr && curr.y) || 0
           };
         }, {x: 0, y: 0});
       });
@@ -3936,13 +3946,17 @@ var Chartist = {
       ].join(' '));
 
       var endAngle = startAngle + dataArray[i] / totalDataSum * 360;
+
+      // Use slight offset so there are no transparent hairline issues
+      var overlappigStartAngle = Math.max(0, startAngle - (i === 0 || hasSingleValInSeries ? 0 : 0.2));
+      
       // If we need to draw the arc for all 360 degrees we need to add a hack where we close the circle
       // with Z and use 359.99 degrees
-      if(endAngle - startAngle === 360) {
-        endAngle -= 0.01;
+      if(endAngle - overlappigStartAngle >= 359.99) {
+        endAngle = overlappigStartAngle + 359.99;
       }
 
-      var start = Chartist.polarToCartesian(center.x, center.y, radius, startAngle - (i === 0 || hasSingleValInSeries ? 0 : 0.2)),
+      var start = Chartist.polarToCartesian(center.x, center.y, radius, overlappigStartAngle),
         end = Chartist.polarToCartesian(center.x, center.y, radius, endAngle);
 
       // Create a new path element for the pie chart. If this isn't a donut chart we should close the path for a correct stroke
@@ -4017,7 +4031,7 @@ var Chartist = {
         }
       }
 
-      // Set next startAngle to current endAngle. Use slight offset so there are no transparent hairline issues
+      // Set next startAngle to current endAngle.
       // (except for last slice)
       startAngle = endAngle;
     }
